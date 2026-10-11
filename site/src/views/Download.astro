@@ -1,0 +1,307 @@
+---
+import Base from "../layouts/Base.astro";
+import Rich from "../components/Rich.astro";
+import Icon from "../components/Icon.astro";
+import { t, href, type Lang } from "../i18n/ui";
+import { RELEASES_PAGE, REPO, ZIP, CLONE } from "../lib/release";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const d = t(lang);
+const p = d.download;
+---
+
+<Base lang={lang} title={p.title} active="download">
+  <section class="wrap page-top dl-page">
+    <div class="page-head">
+      <h1 class="display"><Rich segs={p.h1} /></h1>
+      <p class="lead">{p.lead}</p>
+      <p class="page-note"><b>{p.noteLead}</b>{lang === "en" ? " " : ""}{p.note}</p>
+    </div>
+
+    <div class="dl-cta">
+      <div class="dl-cta-row">
+        <a class="btn-ink" href={REPO} target="_blank" rel="noopener">GitHub<Icon name="github" /></a>
+        <a class="link-more" href={href(lang, "/#tour")}><span>{p.tourLink}</span></a>
+      </div>
+      <p class="dl-hint mono">PYTHON 3.9+ / MACOS · LINUX · WINDOWS / MIT</p>
+    </div>
+
+    <div class="dl-platforms">
+      <h2 class="dl-plat-title">{p.pick}</h2>
+      <div class="dl-plat-row">
+        <a class="dl-plat" href={REPO} target="_blank" rel="noopener">
+          <Icon name="github" />
+          <span>
+            <b>{p.macTitle}</b>
+            <small class="mono">{CLONE}</small>
+          </span>
+        </a>
+        <a class="dl-plat" href={ZIP}>
+          <Icon name="download" />
+          <span>
+            <b>{p.winTitle}</b>
+            <small>{p.winSpec}</small>
+          </span>
+        </a>
+        <div class="dl-plat is-off" aria-disabled="true">
+          <Icon name="plus" />
+          <span>
+            <b>{p.intelTitle}</b>
+            <small>{p.notYet}</small>
+          </span>
+        </div>
+      </div>
+      <p class="dl-alt">
+        <span class="dl-alt-k">{p.other}</span>
+        <a href={RELEASES_PAGE} target="_blank" rel="noopener">{p.allReleases}</a>
+        <a href={REPO} target="_blank" rel="noopener">{d.footer.source}</a>
+      </p>
+    </div>
+  </section>
+
+  <section class="wrap section dl-inside">
+    <h2 class="display">{p.insideTitle}</h2>
+    <div class="cols cols-3">
+      {
+        p.inside.map((c) => (
+          <div class="col">
+            <h3 class="h3">{c.title}</h3>
+            <p>{c.body}</p>
+          </div>
+        ))
+      }
+    </div>
+
+    <div class="dl-first">
+      {
+        p.firstOpen.map((b) => (
+          <div class="dl-first-item">
+            <p class="dl-first-k">{b.label}</p>
+            <pre class="dl-first-v mono">{b.body}</pre>
+          </div>
+        ))
+      }
+    </div>
+
+    <details class="dl-agent">
+      <summary>{p.agentTitle}<Icon name="chev" /></summary>
+      <div class="dl-agent-body">
+        <pre><code data-agent-prompt>{p.agentPrompt}</code></pre>
+        <button class="btn-line" type="button" data-copy data-copied={p.copied}><Icon name="copy" size={13} /><span>{p.copy}</span></button>
+      </div>
+    </details>
+
+    <p class="dl-note">{p.signNote}</p>
+  </section>
+</Base>
+
+<script>
+  for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-copy]")) {
+    btn.addEventListener("click", async () => {
+      const text = btn.closest("details")?.querySelector("[data-agent-prompt]")?.textContent ?? "";
+      const label = btn.querySelector("span")!;
+      const original = label.textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        label.textContent = btn.dataset.copied ?? "Copied";
+        setTimeout(() => (label.textContent = original), 1800);
+      } catch {}
+    });
+  }
+</script>
+
+<style>
+  .dl-cta {
+    margin-top: 34px;
+  }
+  .dl-cta-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px 22px;
+  }
+  .dl-hint {
+    margin-top: 16px;
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+  }
+  .dl-platforms {
+    margin-top: 56px;
+  }
+  .dl-plat-title {
+    font-family: var(--serif);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  :lang(zh) .dl-plat-title {
+    font-family: var(--sans);
+  }
+  .dl-plat-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .dl-plat {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: 4px;
+    background: rgba(var(--rule), 0.05);
+    transition: background var(--t-2) var(--e-out);
+  }
+  a.dl-plat:hover {
+    background: rgba(var(--rule), 0.085);
+  }
+  .dl-plat :global(svg) {
+    width: 17px;
+    height: 19px;
+    flex: none;
+    color: var(--ink-2);
+  }
+  .dl-plat b {
+    display: block;
+    font-family: var(--serif);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink-1);
+  }
+  :lang(zh) .dl-plat b {
+    font-family: var(--sans);
+  }
+  .dl-plat small.mono {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    word-break: break-all;
+  }
+  .dl-plat small {
+    display: block;
+    margin-top: 4px;
+    font-family: var(--serif);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink-3);
+  }
+  :lang(zh) .dl-plat small {
+    font-family: var(--sans);
+    font-size: 12.5px;
+  }
+  .dl-plat.is-off {
+    opacity: 0.5;
+  }
+  .dl-alt {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px 16px;
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+  .dl-alt-k {
+    font-weight: 600;
+  }
+  .dl-alt a {
+    color: var(--ink-2);
+    border-bottom: 1px solid color-mix(in srgb, var(--ink-3) 40%, transparent);
+    padding-bottom: 1px;
+  }
+  .dl-alt a:hover {
+    color: var(--ink-1);
+    border-bottom-color: var(--ink-2);
+  }
+  .dl-inside .display {
+    font-size: clamp(32px, 3.6vw, 48px);
+  }
+  .dl-inside .cols {
+    margin-top: 40px;
+  }
+  .dl-first {
+    display: grid;
+    gap: 28px;
+    margin-top: 48px;
+    padding-top: 28px;
+    border-top: 1px solid var(--line-2);
+  }
+  .dl-first-k {
+    font-family: var(--serif);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  :lang(zh) .dl-first-k {
+    font-family: var(--sans);
+  }
+  .dl-first-v {
+    white-space: pre-wrap;
+    font-size: 13.5px !important;
+    padding: 14px 16px;
+    border-radius: 6px;
+    background: var(--code-bg);
+    margin-top: 10px;
+    max-width: 900px;
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--ink-1);
+  }
+  .dl-agent {
+    margin-top: 36px;
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+  .dl-agent summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-1);
+    cursor: pointer;
+    list-style: none;
+  }
+  .dl-agent summary::-webkit-details-marker {
+    display: none;
+  }
+  .dl-agent summary :global(svg) {
+    width: 10px;
+    height: 10px;
+    transition: transform var(--t-2) var(--e-out);
+  }
+  .dl-agent[open] summary :global(svg) {
+    transform: rotate(180deg);
+  }
+  .dl-agent-body {
+    padding: 0 18px 18px;
+  }
+  .dl-agent pre {
+    margin: 0 0 14px;
+    padding: 14px 16px;
+    border-radius: 6px;
+    background: var(--code-bg);
+    white-space: pre-wrap;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--ink-1);
+  }
+  .dl-note {
+    margin-top: 36px;
+    max-width: 640px;
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--ink-3);
+  }
+  @media (max-width: 860px) {
+    .dl-plat-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

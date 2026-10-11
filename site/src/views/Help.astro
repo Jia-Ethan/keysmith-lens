@@ -1,0 +1,191 @@
+---
+import Base from "../layouts/Base.astro";
+import { t, type Lang } from "../i18n/ui";
+import { HELP } from "../data/help";
+import { block } from "../lib/md";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const d = t(lang);
+const sections = HELP[lang];
+const num = (n: number) => String(n).padStart(2, "0");
+// Site-relative links in answers are written for the root; give English pages their prefix.
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const answer = (md: string) => block(md).replace(/href="\/(?!\/)/g, `href="${BASE}/`);
+---
+
+<Base lang={lang} title={d.help.title} active="help">
+  <section class="wrap page-top">
+    <h1 class="display help-h1">{d.help.title}</h1>
+    <div class="help">
+      <nav class="help-toc" aria-label={d.help.contents}>
+        <p class="help-toc-h">{d.help.contents}</p>
+        <ol>
+          {
+            sections.map((s, i) => (
+              <li>
+                <a href={`#${s.id}`} class:list={{ on: i === 0 }} data-help-toc={s.id}>
+                  <span class="mono">{num(i + 1)}</span>
+                  {s.title}
+                </a>
+              </li>
+            ))
+          }
+        </ol>
+      </nav>
+      <div class="help-body">
+        {
+          sections.map((s) => (
+            <section class="help-sec" id={s.id} data-help-sec>
+              <h2 class="serif">{s.title}</h2>
+              <dl>
+                {s.items.map((qa) => (
+                  <div class="qa">
+                    <dt>{qa.q}</dt>
+                    <dd set:html={answer(qa.a)} />
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  const links = new Map([...document.querySelectorAll<HTMLAnchorElement>("[data-help-toc]")].map((a) => [a.dataset.helpToc!, a]));
+  const secs = [...document.querySelectorAll<HTMLElement>("[data-help-sec]")];
+  const update = () => {
+    let current = secs[0]?.id;
+    for (const s of secs) if (s.getBoundingClientRect().top < 160) current = s.id;
+    for (const [id, a] of links) a.classList.toggle("on", id === current);
+  };
+  update();
+  window.addEventListener("scroll", update, { passive: true });
+</script>
+
+<style>
+  .help-h1 {
+    font-size: clamp(34px, 4.4vw, 56px);
+  }
+  .help {
+    display: grid;
+    grid-template-columns: 272px minmax(0, 1fr);
+    gap: clamp(32px, 4vw, 44px);
+    margin-top: clamp(44px, 6vh, 64px);
+  }
+  .help-toc {
+    position: sticky;
+    top: 84px;
+    align-self: start;
+  }
+  .help-toc-h {
+    padding: 0 12px 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .help-toc a {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 15px;
+    color: var(--ink-2);
+    transition: background var(--t-2) var(--e-out), color var(--t-2) var(--e-out);
+  }
+  .help-toc a .mono {
+    font-size: 10.5px;
+    color: var(--ink-3);
+  }
+  .help-toc a:hover {
+    color: var(--ink-1);
+  }
+  .help-toc a.on {
+    color: var(--ink-1);
+    background: rgba(var(--rule), 0.07);
+  }
+  .help-toc a.on .mono {
+    color: var(--accent);
+  }
+  .help-sec {
+    scroll-margin-top: 84px;
+  }
+  .help-sec + .help-sec {
+    margin-top: clamp(56px, 8vh, 80px);
+  }
+  .help-sec h2 {
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line-2);
+    font-size: 26px;
+    font-weight: 500;
+  }
+  .help-sec dl {
+    margin: 0;
+  }
+  .qa {
+    display: grid;
+    grid-template-columns: minmax(0, 0.42fr) minmax(0, 1fr);
+    gap: 10px 32px;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .qa dt {
+    font-size: 15.5px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--ink-1);
+  }
+  .qa dd {
+    margin: 0;
+    font-size: 15.5px;
+    line-height: 1.7;
+    color: var(--ink-2);
+  }
+  .qa dd :global(p + p),
+  .qa dd :global(p + ul) {
+    margin-top: 10px;
+  }
+  .qa dd :global(ul li) {
+    position: relative;
+    padding-left: 16px;
+  }
+  .qa dd :global(ul li)::before {
+    content: "-";
+    position: absolute;
+    left: 0;
+    color: var(--ink-3);
+  }
+  .qa dd :global(strong) {
+    font-weight: 600;
+    color: var(--ink-1);
+  }
+  .qa dd :global(code) {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--code-bg);
+    font-family: var(--mono);
+    font-size: 0.86em;
+    color: var(--ink-1);
+    overflow-wrap: anywhere;
+  }
+  .qa dd :global(a) {
+    color: var(--ink-1);
+    border-bottom: 1px solid color-mix(in srgb, var(--ink-3) 50%, transparent);
+  }
+  @media (max-width: 900px) {
+    .help {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .help-toc {
+      position: static;
+    }
+    .qa {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

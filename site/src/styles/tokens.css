@@ -1,0 +1,118 @@
+/*
+ * Design tokens. Warm paper in light, graphite in dark; one copper accent
+ * that matches the app's default (#C6792E family). Each agent keeps the
+ * accent it has inside the app.
+ */
+:root {
+  --bg: #f5f1ea;
+  --surface: #fbf9f5;
+  --surface-2: #efeae1;
+  --ink-1: #1c1915;
+  --ink-2: #4d4740;
+  --ink-3: #66605a;
+  --rule: 28, 25, 21;
+  --line: rgba(var(--rule), 0.13);
+  --line-2: rgba(var(--rule), 0.26);
+  --accent: #934c16;
+  --accent-soft: rgba(147, 76, 22, 0.1);
+  --good: #2f6a44;
+  --warn: #8a5a12;
+  --brush: #e1a85a;
+  --btn-bg: #1c1915;
+  --btn-ink: #fbf9f5;
+  --shade: 30, 26, 20;
+  --veil: 245, 241, 234;
+  --code-bg: #ece6dc;
+
+  --agent-claude: #c96442;
+  --agent-codex: #0d8a6a;
+  --agent-opencode: #4d4740;
+  --agent-openhands: #c6792e;
+
+  --serif: "Source Serif 4", "Noto Serif SC", "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+  --hanzi: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+  --sans: "Hanzi Punctuation", "Geist Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", var(--hanzi), sans-serif;
+  --mono: "Hanzi Punctuation", "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, var(--hanzi), monospace;
+
+  --t-display: clamp(30px, 3.2vw, 44px);
+  --t-display-zh: clamp(27px, 2.7vw, 36px);
+  --t-h2: clamp(27px, 3vw, 44px);
+  --t-h2-zh: clamp(24px, 2.6vw, 38px);
+  --t-h3: 21px;
+  --t-sub: clamp(15.5px, 1.25vw, 18px);
+  --t-body: 16px;
+  --t-sm: 13.5px;
+  --t-label: 12px;
+  --t-nav: 12px;
+
+  --wrap: 1240px;
+  --wrap-read: 1040px;
+  --pad: clamp(20px, 4.5vw, 48px);
+
+  --e-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --e-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --t-1: 120ms;
+  --t-2: 200ms;
+  --t-3: 320ms;
+  --t-in: 640ms;
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #131416;
+  --surface: #1a1b1e;
+  --surface-2: #202126;
+  --ink-1: #f0ece5;
+  --ink-2: #b0aaa1;
+  --ink-3: #99938a;
+  --rule: 240, 236, 229;
+  --line: rgba(var(--rule), 0.1);
+  --line-2: rgba(var(--rule), 0.2);
+  --accent: #e39a5b;
+  --accent-soft: rgba(227, 154, 91, 0.12);
+  --good: #7fc29a;
+  --warn: #d9a04e;
+  --brush: #d9a04e;
+  --btn-bg: #ede9e2;
+  --btn-ink: #1c1915;
+  --shade: 0, 0, 0;
+  --veil: 19, 20, 22;
+  --code-bg: #202126;
+
+  --agent-claude: #de8060;
+  --agent-codex: #2ebe96;
+  --agent-opencode: #ced4de;
+  --agent-openhands: #e39a5b;
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131416;
+    --surface: #1a1b1e;
+    --surface-2: #202126;
+    --ink-1: #f0ece5;
+    --ink-2: #b0aaa1;
+    --ink-3: #99938a;
+    --rule: 240, 236, 229;
+    --line: rgba(var(--rule), 0.1);
+    --line-2: rgba(var(--rule), 0.2);
+    --accent: #e39a5b;
+    --accent-soft: rgba(227, 154, 91, 0.12);
+    --good: #7fc29a;
+    --warn: #d9a04e;
+    --brush: #d9a04e;
+    --btn-bg: #ede9e2;
+    --btn-ink: #1c1915;
+    --shade: 0, 0, 0;
+    --veil: 19, 20, 22;
+    --code-bg: #202126;
+    --agent-claude: #de8060;
+    --agent-codex: #2ebe96;
+    --agent-opencode: #ced4de;
+    --agent-openhands: #e39a5b;
+    color-scheme: dark;
+  }
+}

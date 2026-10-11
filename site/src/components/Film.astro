@@ -1,0 +1,121 @@
+---
+import Icon from "./Icon.astro";
+import Rich from "./Rich.astro";
+import { t, asset, type Lang } from "../i18n/ui";
+import chapters from "../data/film.json";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const d = t(lang).film;
+const base = `media/film-${lang}`;
+// Chapter start times (seconds), written by recording/encode.mjs from the recording's marks.
+const times: number[] = (chapters as Record<string, number[]>)[lang] ?? [0];
+---
+
+<figure
+  class="film is-paused"
+  data-film
+  data-label-play={d.play}
+  data-label-pause={d.pause}
+  data-chapters={JSON.stringify(times)}
+  data-src-light={asset(`${base}-light.mp4`)}
+  data-src-dark={asset(`${base}-dark.mp4`)}
+>
+  <figcaption class="film-cap serif" aria-live="off">
+    {
+      d.chapters.map((segs, i) => (
+        <span class:list={["film-line", { on: i === 0 }]} data-line={i}>
+          <span class="film-num mono">{String(i + 1).padStart(2, "0")}</span>
+          <span class="cap"><Rich segs={segs} /></span>
+        </span>
+      ))
+    }
+  </figcaption>
+  <div class="film-stage">
+    <img class="poster is-light" src={asset(`${base}-light.webp`)} alt="" width="1920" height="1080" decoding="async" fetchpriority="high" />
+    <img class="poster is-dark" src={asset(`${base}-dark.webp`)} alt="" width="1920" height="1080" decoding="async" />
+    <video muted loop playsinline preload="none" aria-label={d.label} width="1920" height="1080"></video>
+  </div>
+  <button class="film-ctrl" type="button" data-film-toggle aria-label={d.play}>
+    <Icon name="pause" class="i-pause" /><Icon name="play" class="i-play" />
+  </button>
+</figure>
+
+<style>
+  .film .poster.is-dark,
+  :global(:root[data-theme="dark"]) .film .poster.is-light {
+    display: none;
+  }
+  :global(:root[data-theme="dark"]) .film .poster.is-dark {
+    display: block;
+  }
+  .film video {
+    opacity: 0;
+    transition: opacity var(--t-3) var(--e-out);
+  }
+  .film.is-live video {
+    opacity: 1;
+  }
+</style>
+
+<script>
+  import { themedSrc, reducedMotion } from "../lib/media";
+
+  for (const film of document.querySelectorAll<HTMLElement>("[data-film]")) {
+    const video = film.querySelector("video")!;
+    const toggle = film.querySelector<HTMLButtonElement>("[data-film-toggle]")!;
+    const lines = [...film.querySelectorAll<HTMLElement>("[data-line]")];
+    const times = JSON.parse(film.dataset.chapters ?? "[0]") as number[];
+    const labels = { play: film.dataset.labelPlay ?? "Play", pause: film.dataset.labelPause ?? "Pause" };
+    let wanted = !reducedMotion();
+    let current = 0;
+
+    const showLine = (i: number) => {
+      if (i === current) return;
+      current = i;
+      lines.forEach((line, j) => line.classList.toggle("on", j === i));
+    };
+    video.addEventListener("timeupdate", () => {
+      let i = 0;
+      for (let j = 0; j < times.length; j++) if (video.currentTime >= times[j]) i = j;
+      showLine(Math.min(i, lines.length - 1));
+    });
+
+    const load = () => {
+      const src = themedSrc(film);
+      if (video.dataset.loaded === src) return;
+      const t = video.currentTime;
+      video.dataset.loaded = src;
+      video.src = src;
+      video.addEventListener("loadedmetadata", () => (video.currentTime = t), { once: true });
+      if (wanted) video.play().catch(() => {});
+    };
+    const sync = () => {
+      const playing = !video.paused;
+      film.classList.toggle("is-paused", !playing);
+      toggle.setAttribute("aria-label", playing ? labels.pause : labels.play);
+    };
+    video.addEventListener("playing", () => film.classList.add("is-live"));
+    video.addEventListener("play", sync);
+    video.addEventListener("pause", sync);
+    video.addEventListener("error", () => film.classList.remove("is-live"));
+    toggle.addEventListener("click", () => {
+      wanted = video.paused;
+      if (!video.src) load();
+      wanted ? video.play().catch(() => {}) : video.pause();
+    });
+    video.addEventListener("click", () => toggle.click());
+    window.addEventListener("ks-theme", () => video.src && load());
+    new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          if (!video.src && wanted) load();
+          else if (wanted) video.play().catch(() => {});
+        } else if (!video.paused) video.pause();
+      },
+      { threshold: 0.25 },
+    ).observe(film);
+  }
+</script>

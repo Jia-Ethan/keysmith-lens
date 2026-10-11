@@ -1,0 +1,7 @@
+---
+import { getCollection } from "astro:content";
+import Doc from "../../views/Doc.astro";
+const entry = (await getCollection("docs", (e) => e.id.startsWith("zh/"))).find((e) => e.data.order === 1)!;
+---
+
+<Doc lang="zh" entry={entry} />

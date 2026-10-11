@@ -1,0 +1,9 @@
+---
+import type { Seg } from "../i18n/ui";
+interface Props {
+  segs: Seg[];
+}
+const { segs } = Astro.props;
+---
+
+{segs.map((s) => (s.em || s.brush ? <span class:list={[{ "seg-em": s.em, "seg-brush": s.brush }]}>{s.t}</span> : s.t))}

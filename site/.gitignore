@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.astro/
+recording/frames/
+recording/out/
+.DS_Store
+recording/frames/
+recording/demo-runs/
+recording/viewer.html
+
+# Built by CI from the current viewer (see site/README.md)
+public/media/

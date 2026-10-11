@@ -1,0 +1,28 @@
+---
+import Rich from "./Rich.astro";
+import Icon from "./Icon.astro";
+import { t, href, type Lang } from "../i18n/ui";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const d = t(lang).principles;
+---
+
+<section class="section wrap" aria-labelledby="principles-h">
+  <h2 class="h2 section-head" id="principles-h"><Rich segs={d.title} /></h2>
+  <div class="cols">
+    {
+      d.items.map((item) => (
+        <div class="col">
+          <h3 class="h3">{item.title}</h3>
+          <p>{item.body}</p>
+        </div>
+      ))
+    }
+  </div>
+  <div class="center-more">
+    <a class="link-more" href={href(lang, "/docs/how-it-works/")}><span>{d.more}</span><Icon name="arrow" /></a>
+  </div>
+</section>

@@ -1,0 +1,41 @@
+---
+import Icon from "./Icon.astro";
+import { t, type Lang } from "../i18n/ui";
+import { REPOS, stars } from "../lib/release";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const d = t(lang);
+// Real numbers from the GitHub API at build time, largest first.
+const entries = Object.entries(REPOS)
+  .sort((a, b) => b[1].stars - a[1].stars);
+const groups = [0, 1, 2, 3];
+---
+
+<section class="belt" aria-labelledby="belt-h">
+  <div class="wrap">
+    <h2 class="belt-h" id="belt-h">{d.belt.heading}</h2>
+  </div>
+  <div class="belt-view">
+    <div class="belt-track">
+      {
+        groups.map((g) => (
+          <div class="belt-group" aria-hidden={g === 0 ? undefined : "true"}>
+            {entries.map(([name, repo]) => (
+              <>
+                <a class="belt-chip" href={repo.url} target="_blank" rel="noopener" tabindex={g === 0 ? undefined : -1} aria-label={`${name}, ${d.common.stars(stars(repo.stars))}`}>
+                  {name}
+                  <Icon name="star" />
+                  <b>{stars(repo.stars)}</b>
+                </a>
+                <span class="belt-sep" aria-hidden="true">//</span>
+              </>
+            ))}
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>

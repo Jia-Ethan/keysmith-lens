@@ -89,10 +89,14 @@ def _resolve(run_dir: Path, origin: str) -> Path | None:
         f = run_dir / FLAG_COPIES[origin]
         return f if f.exists() else None
     parts = Path(origin.split(" ")[0]).parts
-    for i in range(len(parts)):
-        f = run_dir.joinpath(*parts[i:]) if parts[i:] and parts[i] != "/" else None
-        if f is not None and f.is_file():
-            return f
+    # `keysmith-lens record --rule` keeps its copies under files/.
+    for base in (run_dir, run_dir / "files"):
+        for i in range(len(parts)):
+            if parts[i] in ("/", "\\"):
+                continue
+            f = base.joinpath(*parts[i:])
+            if f.is_file():
+                return f
     return None
 
 
@@ -146,26 +150,27 @@ def flags(trace: Trace, rules: list[Rule], hits: dict[str, list[Hit]]) -> list[d
         h = [hits[r.key][i] for i in main]
         seen = [x.status != "absent" for x in h]
         if n and not any(seen):
-            notes.append({"kind": "never", "rule": r.key, "step": None,
+            notes.append({"kind": "never", "rule": r.key, "step": None, "n": n,
                           "text": f"{r.key} ({r.origin}) never reached the model in {n} request(s)"})
             continue
         first = seen.index(True) if any(seen) else None
         if first:
-            notes.append({"kind": "late", "rule": r.key, "step": main[first],
+            notes.append({"kind": "late", "rule": r.key, "step": main[first], "n": main[first] + 1,
                           "text": f"{r.key} first appears at step {main[first] + 1}"})
         for j in range(1, n):
             a, b = main[j - 1] + 1, main[j] + 1
             if seen[j - 1] and not seen[j]:
-                notes.append({"kind": "dropped", "rule": r.key, "step": main[j],
+                notes.append({"kind": "dropped", "rule": r.key, "step": main[j], "n": b, "prev": a,
                               "text": f"{r.key} present at step {a}, gone at step {b}"})
             if not seen[j - 1] and seen[j] and first is not None and j > first:
-                notes.append({"kind": "returned", "rule": r.key, "step": main[j],
+                notes.append({"kind": "returned", "rule": r.key, "step": main[j], "n": b,
                               "text": f"{r.key} back at step {b}"})
         for j, x in enumerate(h):
             if x.status == "partial":
-                notes.append({"kind": "partial", "rule": r.key, "step": main[j],
+                notes.append({"kind": "partial", "rule": r.key, "step": main[j], "n": main[j] + 1,
+                              "found": x.found, "total": x.total,
                               "text": f"{r.key} only partly present at step {main[j] + 1} ({x.found}/{x.total} lines)"})
             if x.count > 1:
-                notes.append({"kind": "duplicated", "rule": r.key, "step": main[j],
+                notes.append({"kind": "duplicated", "rule": r.key, "step": main[j], "n": main[j] + 1, "count": x.count,
                               "text": f"{r.key} appears in {x.count} places at step {main[j] + 1}"})
     return notes

@@ -1,0 +1,18 @@
+---
+import Icon from "./Icon.astro";
+import { t, href, type Lang } from "../i18n/ui";
+import { version } from "../lib/release";
+
+interface Props {
+  lang: Lang;
+  /** "hero" shows the requirement hint under the button. */
+  hint?: boolean;
+}
+const { lang, hint = false } = Astro.props;
+const d = t(lang).dl;
+---
+
+<a class="btn-ink" href={href(lang, "/download/")}>
+  {d.any}<Icon name="arrow" />
+</a>
+{hint && <span class="cta-hint">v{version()} / {d.hintMac}</span>}

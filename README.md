@@ -66,7 +66,7 @@ open out/lens.html
 PYTHONPATH=. python3 -m keysmith_lens build path/to/runs -o out/lens.html
 ```
 
-一个运行就是一个目录，里面有 `captures/NNN-*.json`，每个文件是 Agent 发出的一次请求。规则文件放在同一个目录里，或在 `fixtures.json` 里列出。格式见 [`docs/capture-format.md`](docs/capture-format.md)。
+一个运行就是一个目录（`record` 会帮你建好），里面有 `captures/NNN-*.json`，每个文件是 Agent 发出的一次请求。规则文件放在同一个目录里，或在 `fixtures.json` 里列出。格式见 [`docs/capture-format.md`](docs/capture-format.md)。
 
 `lens.html#run=<名字>&step=<n>` 可以直接链接到某个运行的某一步。
 
@@ -87,14 +87,29 @@ PYTHONPATH=. python3 -m keysmith_lens build path/to/runs -o out/lens.html
 keysmith_lens/
   trace.py           通用模型：运行 → 请求 → 片段（一段文字、一个层）
   adapters/wire.py   抓包文件 → 运行（三种请求格式）
+  record.py          本地录制代理
   rules.py           找规则文件、按内容比对、产生标记
   build.py           运行 → 一个 HTML 文件
   template.html      界面
 examples/make_demo.py  生成示例数据（全部虚构）
+site/              官网 lens.keysmithswitch.com（Astro），见 site/README.md
 tests/
 ```
 
 测试：`PYTHONPATH=. python3 -m unittest discover -s tests`
+
+## 录制
+
+`keysmith-lens record` 在本机起一个转发代理，把 Agent 发给模型的请求存成运行目录。请求头不写盘，密钥不会进文件。
+
+```sh
+# 终端 1
+PYTHONPATH=. python3 -m keysmith_lens record runs/first --upstream https://api.anthropic.com --rule ./AGENTS.md
+# 终端 2
+ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude
+```
+
+各 Agent 的设置见[文档](https://lens.keysmithswitch.com/docs/agents/)。
 
 ## Keysmith 系列
 

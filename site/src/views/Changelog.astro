@@ -1,0 +1,331 @@
+---
+import Base from "../layouts/Base.astro";
+import Icon from "../components/Icon.astro";
+import { t, href, type Lang } from "../i18n/ui";
+import { RELEASES, parseNotes, formatDate, version, findAsset } from "../lib/release";
+import { inline, item } from "../lib/md";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const d = t(lang);
+const c = d.changelog;
+const SHOWN = 3;
+const entries = RELEASES.map((r, i) => ({ r, i, notes: parseNotes(r.body), id: r.tag.replace(/\./g, "-") }));
+// Release notes are written in Chinese; their usual section names get short labels.
+const LABELS: Record<string, Record<Lang, string>> = {
+  这一版有什么: { zh: "新内容", en: "What's new" },
+  修了什么: { zh: "修复", en: "Fixed" },
+  目前的限制: { zh: "目前的限制", en: "Current limits" },
+  已知情况: { zh: "已知情况", en: "Known issues" },
+};
+const label = (heading: string) => LABELS[heading]?.[lang] ?? heading;
+---
+
+<Base lang={lang} title={c.title} active="changelog">
+  <section class="wrap page-top">
+    <div class="page-head">
+      <h1 class="display">{c.title}</h1>
+      <p class="lead">{c.lead}</p>
+      <a class="btn-line cl-cta" href={href(lang, "/download/")}>{c.latest}</a>
+      {c.langNote && <p class="cl-lang">{c.langNote}</p>}
+    </div>
+
+    {entries.length === 0 && <p class="lead">{lang === "zh" ? "还没有发布版本。" : "No releases yet."}</p>}
+    <div class="cl" hidden={entries.length === 0}>
+      <nav class="cl-toc" aria-label={c.stable}>
+        <p class="cl-toc-h">{c.stable}</p>
+        <ol>
+          {
+            entries.map(({ r, i, id }) => (
+              <li>
+                <a href={`#${id}`} class:list={{ on: i === 0 }} data-toc={id}>
+                  <span class="mono">{String(i + 1).padStart(2, "0")}</span>
+                  <span>{r.tag}</span>
+                  <small>{formatDate(r.date, lang)}</small>
+                </a>
+              </li>
+            ))
+          }
+        </ol>
+      </nav>
+
+      <div class="cl-list">
+        {
+          entries.map(({ r, notes, id }) => {
+            const mac = findAsset(r, "mac");
+            const win = findAsset(r, "win");
+            return (
+              <article class="cl-entry" id={id} data-entry>
+                <header class="cl-head">
+                  <h2 class="serif">{formatDate(r.date, lang)}</h2>
+                </header>
+                <p class="cl-ver mono">
+                  {c.version} {version(r)}
+                </p>
+                {notes.summary && <p class="cl-summary" set:html={inline(notes.summary)} />}
+                {notes.sections.map((s) => (
+                  <section class="cl-sec">
+                    <h3 class="cl-sec-h mono">{label(s.heading)}</h3>
+                    <ul class="cl-items" data-items>
+                      {s.items.map((it, j) => (
+                        <li class:list={{ "is-extra": j >= SHOWN }} set:html={item(it)} />
+                      ))}
+                    </ul>
+                    {s.items.length > SHOWN && (
+                      <button class="cl-more mono" type="button" data-more data-less={c.less} aria-expanded="false">
+                        <span>{c.more(s.items.length - SHOWN)}</span>
+                        <Icon name="plus" size={9} />
+                      </button>
+                    )}
+                  </section>
+                ))}
+                <p class="cl-links">
+                  <a class="text-link" href={r.url} target="_blank" rel="noopener">
+                    {c.onGithub}
+                  </a>
+                  {mac && (
+                    <a class="text-link" href={mac.url}>
+                      macOS
+                    </a>
+                  )}
+                  {win && (
+                    <a class="text-link" href={win.url}>
+                      Windows
+                    </a>
+                  )}
+                </p>
+              </article>
+            );
+          })
+        }
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-more]")) {
+    const label = btn.querySelector("span")!;
+    const more = label.textContent!;
+    btn.addEventListener("click", () => {
+      const list = btn.previousElementSibling as HTMLElement;
+      const open = list.classList.toggle("is-open");
+      btn.setAttribute("aria-expanded", String(open));
+      label.textContent = open ? btn.dataset.less! : more;
+      btn.classList.toggle("is-open", open);
+    });
+  }
+
+  // Highlight the release in view.
+  const links = new Map([...document.querySelectorAll<HTMLAnchorElement>("[data-toc]")].map((a) => [a.dataset.toc!, a]));
+  const seen = new Map<string, boolean>();
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) seen.set(e.target.id, e.isIntersecting);
+      const first = [...links.keys()].find((id) => seen.get(id));
+      if (!first) return;
+      for (const [id, a] of links) a.classList.toggle("on", id === first);
+      const on = links.get(first)!;
+      const toc = on.closest(".cl-toc") as HTMLElement;
+      const top = on.offsetTop - toc.clientHeight / 2;
+      if (toc.scrollHeight > toc.clientHeight) toc.scrollTo({ top, behavior: "smooth" });
+    },
+    { rootMargin: "-90px 0px -55% 0px" },
+  );
+  for (const el of document.querySelectorAll("[data-entry]")) io.observe(el);
+</script>
+
+<style>
+  .cl-cta {
+    margin-top: 26px;
+  }
+  .cl-lang {
+    margin-top: 16px;
+    font-size: 14px;
+    color: var(--ink-3);
+  }
+  .cl {
+    display: grid;
+    grid-template-columns: 272px minmax(0, 1fr);
+    gap: clamp(32px, 6vw, 86px);
+    margin-top: clamp(56px, 8vh, 84px);
+  }
+  .cl-toc {
+    position: sticky;
+    top: 84px;
+    align-self: start;
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .cl-toc-h {
+    padding: 0 12px 8px;
+    font-family: var(--serif);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  :lang(zh) .cl-toc-h {
+    font-family: var(--sans);
+  }
+  .cl-toc a {
+    display: grid;
+    grid-template-columns: 22px auto 1fr;
+    align-items: baseline;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 14.5px;
+    color: var(--ink-2);
+    transition: background var(--t-2) var(--e-out), color var(--t-2) var(--e-out);
+  }
+  .cl-toc a .mono {
+    font-size: 10.5px;
+    color: var(--ink-3);
+  }
+  .cl-toc a small {
+    justify-self: end;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .cl-toc a:hover {
+    color: var(--ink-1);
+  }
+  .cl-toc a.on {
+    color: var(--ink-1);
+    background: rgba(var(--rule), 0.07);
+  }
+  .cl-toc a.on .mono {
+    color: var(--accent);
+  }
+  .cl-entry {
+    padding-bottom: clamp(48px, 7vh, 72px);
+    scroll-margin-top: 90px;
+  }
+  .cl-head {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .cl-head h2 {
+    font-size: 17px;
+    font-weight: 600;
+  }
+  :lang(zh) .cl-head h2 {
+    font-family: var(--sans);
+  }
+  .cl-ver {
+    margin-top: 22px;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .cl-summary {
+    margin-top: 16px;
+    max-width: 720px;
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--ink-1);
+  }
+  .cl-sec {
+    margin-top: 24px;
+  }
+  .cl-sec-h {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-1);
+  }
+  :lang(zh) .cl-sec-h {
+    letter-spacing: 0.06em;
+  }
+  .cl-items {
+    margin-top: 12px;
+    max-width: 760px;
+  }
+  .cl-items > li {
+    position: relative;
+    padding: 4px 0 4px 18px;
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--ink-2);
+  }
+  .cl-items > li::before {
+    content: "-";
+    position: absolute;
+    left: 0;
+    color: var(--ink-3);
+  }
+  .cl-items > li.is-extra {
+    display: none;
+  }
+  .cl-items.is-open > li.is-extra {
+    display: list-item;
+  }
+  .cl-items :global(strong) {
+    font-weight: 600;
+    color: var(--ink-1);
+  }
+  .cl-items :global(ul) {
+    margin-top: 4px;
+  }
+  .cl-items :global(ul li) {
+    position: relative;
+    padding: 2px 0 2px 16px;
+    font-size: 14.5px;
+  }
+  .cl-items :global(ul li)::before {
+    content: "·";
+    position: absolute;
+    left: 4px;
+    color: var(--ink-3);
+  }
+  .cl-entry :global(code) {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--code-bg);
+    font-family: var(--mono);
+    font-size: 0.86em;
+    color: var(--ink-1);
+    overflow-wrap: anywhere;
+  }
+  .cl-entry :global(a) {
+    color: var(--ink-1);
+    border-bottom: 1px solid color-mix(in srgb, var(--ink-3) 45%, transparent);
+  }
+  .cl-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 10px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    cursor: pointer;
+  }
+  .cl-more:hover {
+    color: var(--ink-1);
+  }
+  .cl-more.is-open :global(svg) {
+    transform: rotate(45deg);
+  }
+  .cl-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    margin-top: 22px;
+    font-size: 13.5px;
+  }
+  @media (max-width: 900px) {
+    .cl {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .cl-toc {
+      display: none;
+    }
+  }
+</style>

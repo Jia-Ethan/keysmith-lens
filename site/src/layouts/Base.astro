@@ -1,0 +1,106 @@
+---
+import "@fontsource/source-serif-4/latin-400.css";
+import "@fontsource/source-serif-4/latin-500.css";
+import "@fontsource/source-serif-4/latin-600.css";
+import "@fontsource/source-serif-4/latin-400-italic.css";
+import "@fontsource/source-serif-4/latin-500-italic.css";
+import "@fontsource/ibm-plex-mono/latin-400.css";
+import "@fontsource/ibm-plex-mono/latin-500.css";
+import "@fontsource/ibm-plex-mono/latin-600.css";
+import "@fontsource/geist-sans/latin-400.css";
+import "@fontsource/geist-sans/latin-500.css";
+import "@fontsource/geist-sans/latin-600.css";
+import "../styles/tokens.css";
+import "../styles/global.css";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
+import { t, swapLang, asset, type Lang } from "../i18n/ui";
+import { version } from "../lib/release";
+
+interface Props {
+  lang: Lang;
+  title?: string;
+  description?: string;
+  active?: "product" | "download" | "changelog" | "docs" | "help";
+  ogImage?: string;
+  /** Error pages have no address of their own: no canonical or alternates. */
+  noindex?: boolean;
+}
+const { lang, title, description, active, ogImage, noindex = false } = Astro.props;
+const d = t(lang);
+const fullTitle = title ? `${title} — Keysmith Lens` : d.meta.title;
+const desc = description ?? d.meta.description;
+const path = Astro.url.pathname;
+const canonical = new URL(path, Astro.site).href;
+const altZh = new URL(swapLang(path, "zh"), Astro.site).href;
+const altEn = new URL(swapLang(path, "en"), Astro.site).href;
+const og = new URL(ogImage ?? asset(`og-${lang}.png`), Astro.site).href;
+---
+
+<!doctype html>
+<html lang={d.htmlLang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>
+      // Theme and OS before first paint, so nothing flashes.
+      (function () {
+        var root = document.documentElement;
+        var theme;
+        try {
+          theme = localStorage.getItem("ks-theme");
+        } catch (e) {}
+        if (theme !== "light" && theme !== "dark") theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        root.dataset.theme = theme;
+        var ua = navigator.userAgentData && navigator.userAgentData.platform ? navigator.userAgentData.platform : navigator.platform || "";
+        var all = ua + " " + navigator.userAgent;
+        root.dataset.os = /Mac/i.test(all) && !/iPhone|iPad|iPod/i.test(all) ? "mac" : /Win/i.test(all) ? "win" : "other";
+      })();
+    </script>
+    <title>{fullTitle}</title>
+    <meta name="description" content={desc} />
+    <meta name="ks-version" content={version()} />
+    {
+      noindex ? (
+        <meta name="robots" content="noindex" />
+      ) : (
+        <>
+          <link rel="canonical" href={canonical} />
+          <link rel="alternate" hreflang="zh-CN" href={altZh} />
+          <link rel="alternate" hreflang="en" href={altEn} />
+          <link rel="alternate" hreflang="x-default" href={altZh} />
+        </>
+      )
+    }
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F5F1EA" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#131416" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Keysmith Lens" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={desc} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={d.ogLocale} />
+    <meta property="og:image" content={og} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={desc} />
+    <meta name="twitter:image" content={og} />
+    <link rel="icon" href={asset("favicon.ico")} sizes="any" />
+    <link rel="icon" href={asset("favicon-32.png")} type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href={asset("apple-touch-icon.png")} />
+    {lang === "zh" && <link rel="preload" href={asset("fonts/noto-serif-sc-500.woff2")} as="font" type="font/woff2" crossorigin />}
+    {lang === "zh" && (
+      <style is:inline set:html={`@font-face{font-family:"Noto Serif SC";font-weight:400 600;font-display:swap;src:url("${asset("fonts/noto-serif-sc-500.woff2")}") format("woff2")}`} />
+    )}
+    <slot name="head" />
+  </head>
+  <body>
+    <Nav lang={lang} active={active} home={noindex} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer lang={lang} />
+  </body>
+</html>

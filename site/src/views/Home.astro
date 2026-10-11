@@ -1,0 +1,25 @@
+---
+import Base from "../layouts/Base.astro";
+import Hero from "../components/Hero.astro";
+import Film from "../components/Film.astro";
+import Tour from "../components/Tour.astro";
+import Belt from "../components/Belt.astro";
+import Principles from "../components/Principles.astro";
+import AgentCards from "../components/AgentCards.astro";
+import type { Lang } from "../i18n/ui";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+---
+
+<Base lang={lang} active="product">
+  <Hero lang={lang}>
+    <Film lang={lang} />
+  </Hero>
+  <Tour lang={lang} />
+  <Belt lang={lang} />
+  <Principles lang={lang} />
+  <AgentCards lang={lang} />
+</Base>

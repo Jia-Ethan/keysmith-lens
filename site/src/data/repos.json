@@ -1,0 +1,35 @@
+{
+  "fetchedAt": "2026-10-11T11:54:31.445Z",
+  "repos": {
+    "keysmith-lens": {
+      "stars": 0,
+      "url": "https://github.com/Jia-Ethan/keysmith-lens",
+      "description": "Replay coding-agent runs and see what the model was actually sent: did each AGENTS.md, CLAUDE.md and system prompt reach it, where, and when did it drop?"
+    },
+    "keysmith-switch": {
+      "stars": 262,
+      "url": "https://github.com/Jia-Ethan/keysmith-switch",
+      "description": "Unified desktop manager for Keysmith prompt and instruction profiles."
+    },
+    "codex-keysmith": {
+      "stars": 4725,
+      "url": "https://github.com/Jia-Ethan/codex-keysmith",
+      "description": "Versioned Codex instruction deployment with preview, ownership manifests, hook isolation, scenario evaluation, and recovery."
+    },
+    "claude-keysmith": {
+      "stars": 852,
+      "url": "https://github.com/Jia-Ethan/claude-keysmith",
+      "description": "Managed Claude Code instruction deployment with safe CLI recovery and an unsigned macOS/Windows desktop beta."
+    },
+    "grok-keysmith": {
+      "stars": 489,
+      "url": "https://github.com/Jia-Ethan/grok-keysmith",
+      "description": "Preview-first Grok Build instruction deployment with compat and hook isolation, durable recovery, and layered uninstall."
+    },
+    "zcode-keysmith": {
+      "stars": 333,
+      "url": "https://github.com/Jia-Ethan/zcode-keysmith",
+      "description": "ZCode App managed true system-role entrypoint"
+    }
+  }
+}

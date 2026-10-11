@@ -1,0 +1,277 @@
+---
+import Icon from "./Icon.astro";
+import { t, asset, type Lang } from "../i18n/ui";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const d = t(lang).tour;
+const items = d.items;
+const clip = (id: string, theme: "light" | "dark", ext: "mp4" | "webp") => asset(`media/tour-${id}-${lang}-${theme}.${ext}`);
+---
+
+<section class="tour wrap" id="tour" aria-labelledby="tour-h">
+  <h2 class="sr-only" id="tour-h">{d.heading}</h2>
+  <div class="tp" data-tour data-label-play={d.play} data-label-pause={d.pause}>
+    <div class="tp-list" role="tablist" aria-label={d.heading}>
+      {
+        items.map((item, i) => (
+          <button
+            class:list={["tp-item", { on: i === 0, gap: i === 4 }]}
+            type="button"
+            role="tab"
+            id={`tp-tab-${item.id}`}
+            aria-selected={i === 0 ? "true" : "false"}
+            aria-controls="tp-stage"
+            data-i={i}
+          >
+            <span class="tp-num">{String(i + 1).padStart(2, "0")}</span>
+            <span class="tp-title">{item.title}</span>
+            <span class="tp-body">
+              <span>{item.body}</span>
+            </span>
+            <span class="tp-fill" aria-hidden="true">
+              <i />
+            </span>
+          </button>
+        ))
+      }
+    </div>
+    <div class="tp-side">
+      <div class="tp-stage" id="tp-stage" role="tabpanel" aria-labelledby={`tp-tab-${items[0].id}`}>
+        {
+          items.map((item, i) => (
+            <div
+              class:list={["tp-layer", { on: i === 0 }]}
+              data-layer={i}
+              data-src-light={clip(item.id, "light", "mp4")}
+              data-src-dark={clip(item.id, "dark", "mp4")}
+              aria-hidden={i === 0 ? "false" : "true"}
+            >
+              <img class="poster is-light" src={clip(item.id, "light", "webp")} alt="" width="1180" height="760" loading={i === 0 ? "eager" : "lazy"} decoding="async" />
+              <img class="poster is-dark" src={clip(item.id, "dark", "webp")} alt="" width="1180" height="760" loading="lazy" decoding="async" />
+              <video muted playsinline preload="none" aria-label={item.title} />
+            </div>
+          ))
+        }
+      </div>
+      <div class="tp-ctrls">
+        <button class="play-ctrl" type="button" data-tour-toggle aria-label={d.pause}>
+          <Icon name="pause" class="i-pause" /><Icon name="play" class="i-play" />
+        </button>
+        <button class="zoom-ctrl" type="button" data-tour-zoom>
+          <Icon name="expand" />{d.fullscreen}
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .tp-layer .poster.is-dark,
+  :global(:root[data-theme="dark"]) .tp-layer .poster.is-light {
+    display: none;
+  }
+  :global(:root[data-theme="dark"]) .tp-layer .poster.is-dark {
+    display: block;
+  }
+  .tp-layer video {
+    opacity: 0;
+    transition: opacity var(--t-2) var(--e-out);
+  }
+  .tp-layer.is-live video {
+    opacity: 1;
+  }
+  .tp-ctrls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .zoom-ctrl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px 0 10px;
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    background: var(--surface);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-1);
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(var(--shade), 0.08);
+  }
+  .zoom-ctrl :global(svg) {
+    width: 11px;
+    height: 11px;
+  }
+  .tp-stage:fullscreen {
+    border-radius: 0;
+    background: var(--bg);
+  }
+  .tp-stage:fullscreen :global(img),
+  .tp-stage:fullscreen :global(video) {
+    object-fit: contain;
+  }
+</style>
+
+<script>
+  import { themedSrc, reducedMotion } from "../lib/media";
+
+  // Each tab plays its clip once; when it ends the next tab starts. Without a
+  // clip (or with reduced motion) a tab holds for a fixed time instead.
+  const HOLD_MS = 6500;
+  for (const root of document.querySelectorAll<HTMLElement>("[data-tour]")) {
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>(".tp-item")];
+    const layers = [...root.querySelectorAll<HTMLElement>(".tp-layer")];
+    const stage = root.querySelector<HTMLElement>(".tp-stage")!;
+    const toggle = root.querySelector<HTMLButtonElement>("[data-tour-toggle]")!;
+    const side = root.querySelector<HTMLElement>(".tp-side")!;
+    const labels = { play: root.dataset.labelPlay ?? "Play", pause: root.dataset.labelPause ?? "Pause" };
+    let index = 0;
+    let playing = !reducedMotion();
+    let inView = false;
+    let holdStart = 0;
+    let holdElapsed = 0;
+    let raf = 0;
+
+    const video = (i: number) => layers[i].querySelector("video")!;
+    const fill = (i: number) => tabs[i].querySelector<HTMLElement>(".tp-fill i")!;
+
+    const load = (i: number) => {
+      const v = video(i);
+      const src = themedSrc(layers[i]);
+      if (v.dataset.loaded === src) return;
+      v.dataset.loaded = src;
+      v.src = src;
+      v.load();
+    };
+
+    const setProgress = (i: number, p: number) => {
+      fill(i).style.transform = `scaleX(${Math.max(0, Math.min(1, p))})`;
+    };
+
+    const tick = () => {
+      cancelAnimationFrame(raf);
+      if (!playing || !inView) return;
+      const v = video(index);
+      if (layers[index].classList.contains("is-live") && v.duration) {
+        setProgress(index, v.currentTime / v.duration);
+      } else {
+        const elapsed = holdElapsed + (performance.now() - holdStart);
+        setProgress(index, elapsed / HOLD_MS);
+        if (elapsed >= HOLD_MS) return go(index + 1);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    const start = () => {
+      const v = video(index);
+      holdStart = performance.now();
+      if (playing && inView) {
+        load(index);
+        v.play().catch(() => {});
+        load((index + 1) % layers.length);
+      }
+      tick();
+    };
+
+    const go = (next: number, user = false) => {
+      const prev = index;
+      index = (next + tabs.length) % tabs.length;
+      video(prev).pause();
+      setProgress(prev, 0);
+      tabs.forEach((tab, i) => {
+        const on = i === index;
+        tab.classList.toggle("on", on);
+        tab.setAttribute("aria-selected", String(on));
+        tab.tabIndex = on ? 0 : -1;
+      });
+      layers.forEach((layer, i) => {
+        layer.classList.toggle("on", i === index);
+        layer.setAttribute("aria-hidden", String(i !== index));
+      });
+      stage.setAttribute("aria-labelledby", tabs[index].id);
+      const v = video(index);
+      if (v.readyState > 0) v.currentTime = 0;
+      holdElapsed = 0;
+      if (user && reducedMotion()) playing = false;
+      syncToggle();
+      start();
+    };
+
+    const syncToggle = () => {
+      side.classList.toggle("is-paused", !playing);
+      toggle.setAttribute("aria-label", playing ? labels.pause : labels.play);
+    };
+
+    for (const layer of layers) {
+      const v = layer.querySelector("video")!;
+      v.addEventListener("playing", () => layer.classList.add("is-live"));
+      v.addEventListener("error", () => layer.classList.remove("is-live"));
+      v.addEventListener("ended", () => {
+        if (layers.indexOf(layer) === index && playing) go(index + 1);
+      });
+    }
+
+    tabs.forEach((tab, i) => {
+      tab.addEventListener("click", () => go(i, true));
+      tab.tabIndex = i === 0 ? 0 : -1;
+      tab.addEventListener("keydown", (e) => {
+        const step = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 0;
+        if (!step) return;
+        e.preventDefault();
+        go(i + step, true);
+        tabs[index].focus();
+      });
+    });
+
+    const zoom = root.querySelector<HTMLButtonElement>("[data-tour-zoom]");
+    if (!stage.requestFullscreen) zoom?.remove();
+    zoom?.addEventListener("click", () => void stage.requestFullscreen?.().catch(() => {}));
+
+    toggle.addEventListener("click", () => {
+      playing = !playing;
+      const v = video(index);
+      if (playing) {
+        holdStart = performance.now();
+        start();
+      } else {
+        holdElapsed += performance.now() - holdStart;
+        v.pause();
+        cancelAnimationFrame(raf);
+      }
+      syncToggle();
+    });
+
+    window.addEventListener("ks-theme", () => {
+      layers.forEach((layer, i) => {
+        const v = video(i);
+        if (!v.dataset.loaded) return;
+        const t = v.currentTime;
+        layer.classList.remove("is-live");
+        load(i);
+        v.addEventListener("loadedmetadata", () => (v.currentTime = t), { once: true });
+        if (i === index && playing && inView) v.play().catch(() => {});
+      });
+    });
+
+    new IntersectionObserver(
+      ([e]) => {
+        inView = e.isIntersecting;
+        if (inView) {
+          holdStart = performance.now();
+          start();
+        } else {
+          holdElapsed += performance.now() - holdStart;
+          video(index).pause();
+          cancelAnimationFrame(raf);
+        }
+      },
+      { threshold: 0.35 },
+    ).observe(stage);
+    syncToggle();
+  }
+</script>

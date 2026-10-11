@@ -66,7 +66,7 @@ For your own runs, pass run folders or folders that contain runs:
 PYTHONPATH=. python3 -m keysmith_lens build path/to/runs -o out/lens.html
 ```
 
-A run is a folder with `captures/NNN-*.json`, one file per request the agent sent. Rule files sit in the same folder or are listed in `fixtures.json`. See [`docs/capture-format.md`](docs/capture-format.md).
+A run is a folder (`record` makes one for you) with `captures/NNN-*.json`, one file per request the agent sent. Rule files sit in the same folder or are listed in `fixtures.json`. See [`docs/capture-format.md`](docs/capture-format.md).
 
 Link to a run and request with `lens.html#run=<name>&step=<n>`.
 
@@ -87,14 +87,29 @@ Link to a run and request with `lens.html#run=<name>&step=<n>`.
 keysmith_lens/
   trace.py           common model: run -> request -> segment (one piece, one layer)
   adapters/wire.py   capture files -> run (three request formats)
+  record.py          the local recording proxy
   rules.py           find rule files, match by content, raise flags
   build.py           runs -> one HTML file
   template.html      the viewer
 examples/make_demo.py  writes the demo runs (all made up)
+site/              the website lens.keysmithswitch.com (Astro), see site/README.md
 tests/
 ```
 
 Tests: `PYTHONPATH=. python3 -m unittest discover -s tests`
+
+## Recording
+
+`keysmith-lens record` runs a forwarding proxy on your machine and saves what the agent sends the model as a run folder. Headers are never written, so keys stay off disk.
+
+```sh
+# terminal 1
+PYTHONPATH=. python3 -m keysmith_lens record runs/first --upstream https://api.anthropic.com --rule ./AGENTS.md
+# terminal 2
+ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude
+```
+
+Settings for each agent are in the [docs](https://lens.keysmithswitch.com/en/docs/agents/).
 
 ## The Keysmith series
 

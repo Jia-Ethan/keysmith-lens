@@ -1,0 +1,63 @@
+---
+import keyMark from "../assets/brand/key-mark.svg?raw";
+import { t, href, type Lang } from "../i18n/ui";
+import { REPO, RELEASES_PAGE, ISSUES, SWITCH_SITE } from "../lib/release";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const d = t(lang);
+const f = d.footer;
+const year = new Date().getFullYear();
+---
+
+<footer class="foot">
+  <div class="foot-in">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <a class="brand" href={href(lang, "/")}>
+          <span class="brand-mark" set:html={keyMark} />
+          <span class="brand-name">Keysmith Lens</span>
+        </a>
+        <p>{f.blurb}</p>
+      </div>
+      <div class="foot-cols">
+        <div class="foot-col">
+          <h2>{f.product}</h2>
+          <a href={href(lang, "/#tour")}>{f.tour}</a>
+          <a href={href(lang, "/download/")}>{d.nav.download}</a>
+          <a href={href(lang, "/changelog/")}>{d.nav.changelog}</a>
+          <a href={href(lang, "/docs/how-it-works/")}>{f.extensions}</a>
+        </div>
+        <div class="foot-col">
+          <h2>{f.resources}</h2>
+          <a href={href(lang, "/docs/")}>{d.nav.docsIndex}</a>
+          <a href={href(lang, "/help/")}>{d.nav.help}</a>
+          <a href={RELEASES_PAGE} target="_blank" rel="noopener">{f.releases}</a>
+          <a href={REPO} target="_blank" rel="noopener">{f.source}</a>
+        </div>
+        <div class="foot-col">
+          <h2>{f.keysmith}</h2>
+          <a href={SWITCH_SITE} target="_blank" rel="noopener">Keysmith Switch</a>
+          <a href="https://github.com/Jia-Ethan/claude-keysmith" target="_blank" rel="noopener">claude-keysmith</a>
+          <a href="https://github.com/Jia-Ethan/codex-keysmith" target="_blank" rel="noopener">codex-keysmith</a>
+          <a href="https://github.com/Jia-Ethan/grok-keysmith" target="_blank" rel="noopener">grok-keysmith</a>
+        </div>
+        <div class="foot-col">
+          <h2>{f.community}</h2>
+          <a href={REPO} target="_blank" rel="noopener">GitHub</a>
+          <a href={ISSUES} target="_blank" rel="noopener">{d.nav.discussions}</a>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bot">
+      <span>© {year} Jia-Ethan. {f.rights}</span>
+      <nav aria-label={f.license}>
+        <a href={`${REPO}/blob/main/LICENSE`} target="_blank" rel="noopener">{f.license}</a>
+        <a href={href(lang, "/docs/privacy/")}>{f.privacy}</a>
+        <a href={`${REPO}/blob/main/site/README.md`} target="_blank" rel="noopener">{f.notices}</a>
+      </nav>
+    </div>
+  </div>
+</footer>

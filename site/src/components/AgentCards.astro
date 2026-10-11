@@ -1,0 +1,74 @@
+---
+import Rich from "./Rich.astro";
+import Icon from "./Icon.astro";
+import AgentLogo, { type AgentId } from "./AgentLogo.astro";
+import { t, href, type Lang } from "../i18n/ui";
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const d = t(lang).cards;
+
+// The request format each agent sends, and the versions recorded and checked with Lens.
+const AGENTS: { id: AgentId; name: string; adapter: string; version: string; repo: string }[] = [
+  { id: "claude", name: "Claude Code", adapter: "messages", version: "2.1", repo: "https://github.com/anthropics/claude-code" },
+  { id: "codex", name: "Codex", adapter: "responses", version: "0.144", repo: "https://github.com/openai/codex" },
+  { id: "opencode", name: "OpenCode · Pi", adapter: "responses", version: "1.18 · 1.0", repo: "https://github.com/anomalyco/opencode" },
+  { id: "openhands", name: "OpenHands", adapter: "responses · chat", version: "1.49", repo: "https://github.com/OpenHands/OpenHands" },
+];
+---
+
+<section class="section wrap" id="agents" aria-labelledby="agents-h">
+  <h2 class="h2 section-head" id="agents-h"><Rich segs={d.title} /></h2>
+  <div class="pk-grid">
+    {
+      AGENTS.map((a) => {
+        const c = d.agents[a.id];
+        return (
+          <article class="pk" style={`--agent: var(--agent-${a.id})`}>
+            <div class="pk-head">
+              <AgentLogo agent={a.id} class="pk-logo" />
+              <h3>{a.name}</h3>
+              <span class="pk-tag">{d.platforms}</span>
+            </div>
+            <div class="pk-price">
+              <b>v{a.version}</b>
+              <span>/ {a.adapter}</span>
+            </div>
+            <p class="pk-who">{c.who}</p>
+            <a class="pk-cta" href={a.repo} target="_blank" rel="noopener">
+              {d.source}
+              <Icon name="out" />
+            </a>
+            <ul class="pk-f">
+              {c.yes.map((line) => (
+                <li>{line}</li>
+              ))}
+              {c.no.map((line) => (
+                <li class="no">{line}</li>
+              ))}
+            </ul>
+            <div class="pk-files">
+              <p>{d.filesLabel}</p>
+              <div class="chips">
+                {c.files.map((f) => (
+                  <span class="chip">{f}</span>
+                ))}
+              </div>
+            </div>
+          </article>
+        );
+      })
+    }
+  </div>
+  <div class="center-more">
+    <a class="link-more" href={href(lang, "/docs/agents/")}><span>{d.more}</span><Icon name="arrow" /></a>
+  </div>
+</section>
+
+<style>
+  .pk {
+    border-top: 2px solid color-mix(in srgb, var(--agent) 70%, transparent);
+  }
+</style>

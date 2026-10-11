@@ -7,8 +7,8 @@ dist/
 
 # Trajectory data never lives in this repo. Point the tool at a
 # redacted copy elsewhere.
-data/
-runs/
+/data/
+/runs/
 *.sqlite
 *.db
 

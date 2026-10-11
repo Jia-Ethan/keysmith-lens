@@ -1,0 +1,157 @@
+---
+import Icon from "./Icon.astro";
+import keyMark from "../assets/brand/key-mark.svg?raw";
+import { t, href, swapLang, type Lang } from "../i18n/ui";
+import { REPO, REPOS, ISSUES, SWITCH_SITE, stars } from "../lib/release";
+
+interface Props {
+  lang: Lang;
+  active?: "product" | "download" | "changelog" | "docs" | "help";
+  /** The language switch goes to the homepage (error pages). */
+  home?: boolean;
+}
+const { lang, active, home = false } = Astro.props;
+const d = t(lang).nav;
+const path = home ? href(lang, "/") : Astro.url.pathname;
+const toZh = swapLang(path, "zh");
+const toEn = swapLang(path, "en");
+const starCount = stars(REPOS["keysmith-lens"]?.stars ?? 0);
+const docsOn = active === "docs" || active === "changelog" || active === "help";
+---
+
+<header class="nav" data-nav>
+  <a class="skip-link" href="#main">{d.skip}</a>
+  <div class="nav-in">
+    <a class="brand" href={href(lang, "/")} aria-label="Keysmith Lens">
+      <span class="brand-mark" set:html={keyMark} />
+      <span class="brand-name">Keysmith Lens</span>
+    </a>
+
+    <nav class="nav-links" aria-label={d.menu}>
+      <a class:list={["nav-link", { "is-on": active === "product" }]} href={href(lang, "/")} aria-current={active === "product" ? "page" : undefined}>{d.product}</a>
+      <a class:list={["nav-link", { "is-on": active === "download" }]} href={href(lang, "/download/")} aria-current={active === "download" ? "page" : undefined}>{d.download}</a>
+      <div class="nav-drop" data-drop>
+        <button class:list={["nav-trig", { "is-on": docsOn }]} type="button" aria-expanded="false" aria-haspopup="true">
+          <span class="nt-label">{d.docs}</span><Icon name="chev" class="chev" />
+        </button>
+        <div class="nav-pop">
+          <div class="nav-pop-card">
+            <a class="nm-row" href={href(lang, "/docs/")}>{d.docsIndex}</a>
+            <a class="nm-row" href={href(lang, "/changelog/")}>{d.changelog}</a>
+            <a class="nm-row" href={href(lang, "/help/")}>{d.help}</a>
+          </div>
+        </div>
+      </div>
+      <div class="nav-drop" data-drop>
+        <button class="nav-trig" type="button" aria-expanded="false" aria-haspopup="true">
+          <span class="nt-label">{d.community}</span><Icon name="out" class="out" />
+        </button>
+        <div class="nav-pop">
+          <div class="nav-pop-card">
+            <a class="nm-row" href={REPO} target="_blank" rel="noopener">{d.github}<small>★ {starCount}</small></a>
+            <a class="nm-row" href={ISSUES} target="_blank" rel="noopener">{d.discussions}</a>
+            <a class="nm-row" href={SWITCH_SITE} target="_blank" rel="noopener">Keysmith Switch</a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="nav-acts">
+      <a class="nav-help" href={href(lang, "/help/")}><Icon name="help" />{d.getHelp}</a>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label={d.themeToggle} title={d.themeToggle}>
+        <Icon name="moon" class="moon" /><Icon name="sun" class="sun" />
+      </button>
+      <div class="lang-seg" role="group" aria-label={d.language}>
+        <a href={toEn} hreflang="en" lang="en" aria-current={lang === "en" ? "true" : undefined}>EN</a>
+        <a href={toZh} hreflang="zh-CN" lang="zh-CN" aria-current={lang === "zh" ? "true" : undefined}>CN</a>
+      </div>
+      <a class="gh-btn" href={REPO} target="_blank" rel="noopener" aria-label={`GitHub · ${d.stars} ${starCount}`}>
+        <Icon name="github" /><span>{starCount}</span>
+      </a>
+      <a class="nav-cta" href={href(lang, "/download/")}>{d.ctaShort}</a>
+      <button class="burger" type="button" data-burger aria-expanded="false" aria-controls="drawer" aria-label={d.menu}><i></i><i></i></button>
+    </div>
+  </div>
+
+  <div class="drawer" id="drawer">
+    <a class:list={["dr-row", { "is-on": active === "product" }]} href={href(lang, "/")}>{d.product}</a>
+    <a class:list={["dr-row", { "is-on": active === "download" }]} href={href(lang, "/download/")}>{d.download}</a>
+    <p class="dr-h">{d.docs}</p>
+    <a class:list={["dr-row", { "is-on": active === "docs" }]} href={href(lang, "/docs/")}>{d.docsIndex}</a>
+    <a class:list={["dr-row", { "is-on": active === "changelog" }]} href={href(lang, "/changelog/")}>{d.changelog}</a>
+    <a class:list={["dr-row", { "is-on": active === "help" }]} href={href(lang, "/help/")}>{d.help}</a>
+    <p class="dr-h">{d.community}</p>
+    <a class="dr-row" href={REPO} target="_blank" rel="noopener">{d.github}<small class="mono">★ {starCount}</small></a>
+    <a class="dr-row" href={ISSUES} target="_blank" rel="noopener">{d.discussions}</a>
+    <a class="dr-row" href={SWITCH_SITE} target="_blank" rel="noopener">Keysmith Switch</a>
+    <div class="dr-pref">
+      <span class="dr-pref-k">{d.theme}</span>
+      <button type="button" data-set-theme="light" aria-pressed="false">{d.themeLight}</button>
+      <button type="button" data-set-theme="dark" aria-pressed="false">{d.themeDark}</button>
+    </div>
+    <div class="dr-pref">
+      <span class="dr-pref-k">{d.language}</span>
+      <a href={toEn} hreflang="en" aria-current={lang === "en" ? "true" : undefined}>English</a>
+      <a href={toZh} hreflang="zh-CN" aria-current={lang === "zh" ? "true" : undefined}>中文</a>
+    </div>
+    <a class="dr-dl" href={href(lang, "/download/")}><Icon name="arrow" size={16} />{d.cta}</a>
+  </div>
+</header>
+
+<script>
+  const nav = document.querySelector<HTMLElement>("[data-nav]")!;
+  const onScroll = () => nav.classList.toggle("is-scrolled", window.scrollY > 8);
+  onScroll();
+  window.addEventListener("scroll", onScroll, { passive: true });
+
+  const burger = nav.querySelector<HTMLButtonElement>("[data-burger]")!;
+  burger.addEventListener("click", () => {
+    const open = !nav.classList.contains("is-open");
+    nav.classList.toggle("is-open", open);
+    burger.setAttribute("aria-expanded", String(open));
+  });
+
+  // Dropdowns open on hover/focus via CSS; clicks toggle them for touch and keyboard.
+  for (const drop of nav.querySelectorAll<HTMLElement>("[data-drop]")) {
+    const trig = drop.querySelector("button")!;
+    trig.addEventListener("click", () => {
+      const open = !drop.classList.contains("is-open");
+      for (const other of nav.querySelectorAll("[data-drop].is-open")) other.classList.remove("is-open");
+      drop.classList.toggle("is-open", open);
+      trig.setAttribute("aria-expanded", String(open));
+    });
+  }
+  document.addEventListener("click", (e) => {
+    if (!(e.target as Element).closest("[data-drop]")) {
+      for (const drop of nav.querySelectorAll("[data-drop].is-open")) {
+        drop.classList.remove("is-open");
+        drop.querySelector("button")!.setAttribute("aria-expanded", "false");
+      }
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    for (const drop of nav.querySelectorAll<HTMLElement>("[data-drop].is-open")) {
+      drop.classList.remove("is-open");
+      drop.querySelector("button")!.focus();
+    }
+    if (nav.classList.contains("is-open")) {
+      nav.classList.remove("is-open");
+      burger.setAttribute("aria-expanded", "false");
+      burger.focus();
+    }
+  });
+
+  const setTheme = (mode: "light" | "dark") => {
+    document.documentElement.dataset.theme = mode;
+    try {
+      localStorage.setItem("ks-theme", mode);
+    } catch {}
+    for (const b of nav.querySelectorAll("[data-set-theme]")) b.setAttribute("aria-pressed", String(b.getAttribute("data-set-theme") === mode));
+    window.dispatchEvent(new CustomEvent("ks-theme", { detail: mode }));
+  };
+  const current = () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+  for (const b of nav.querySelectorAll("[data-set-theme]")) b.setAttribute("aria-pressed", String(b.getAttribute("data-set-theme") === current()));
+  nav.querySelector("[data-theme-toggle]")!.addEventListener("click", () => setTheme(current() === "dark" ? "light" : "dark"));
+  for (const b of nav.querySelectorAll<HTMLElement>("[data-set-theme]")) b.addEventListener("click", () => setTheme(b.dataset.setTheme as "light" | "dark"));
+</script>

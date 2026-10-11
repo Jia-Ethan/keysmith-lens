@@ -36,6 +36,8 @@ header { display: flex; align-items: center; gap: 20px; height: 56px; padding: 0
 header .sub { color: var(--muted); font: 12px var(--mono); white-space: nowrap; }
 .legend { display: flex; gap: 14px; margin-left: auto; color: var(--ink-2); flex-wrap: wrap; font: 12px var(--mono); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
+.langsw { all: unset; cursor: pointer; font: 11.5px var(--mono); color: var(--ink-2); padding: 4px 8px; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--line-2); }
+.langsw:hover { color: var(--ink); background: var(--wash); }
 .theme { all: unset; cursor: pointer; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); }
 .theme:hover { background: var(--wash); color: var(--ink); }
 .theme svg { width: 16px; height: 16px; }
@@ -116,6 +118,11 @@ pre mark::before { content: attr(data-k); font: 600 10px var(--mono); color: var
     try { t = q || localStorage.getItem("ks-theme"); } catch (e) {}
     if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     document.documentElement.dataset.theme = t;
+    var l = new URLSearchParams(location.search).get("lang");
+    try { l = l || localStorage.getItem("ks-lang"); } catch (e) {}
+    if (l !== "zh" && l !== "en") l = /^zh/i.test(navigator.language) ? "zh" : "en";
+    document.documentElement.lang = l === "zh" ? "zh-CN" : "en";
+    document.documentElement.dataset.lang = l;
   })();
 </script>
 </head>
@@ -124,7 +131,8 @@ pre mark::before { content: attr(data-k); font: 600 10px var(--mono); color: var
   <div class="brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="15.6" cy="8.4" r="5.6" stroke-width="1.7"/><circle cx="15.6" cy="8.4" r="2.3" stroke-width="1.3"/><path d="M11.6 12.4 3.6 20.4" stroke-width="1.9"/><path d="M7.1 16.9l1.9 1.9M4.9 19.1l1.5 1.5" stroke-width="1.9"/></svg>Keysmith Lens</div>
   <span class="sub" id="sub"></span>
   <div class="legend" id="legend"></div>
-  <button class="theme" id="theme" type="button" aria-label="Toggle light / dark" title="Toggle light / dark" data-testid="theme"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+  <button class="langsw" id="langsw" type="button" data-testid="lang"></button>
+  <button class="theme" id="theme" type="button" data-testid="theme"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
 </header>
 <div class="layout">
   <nav id="nav"></nav>
@@ -135,8 +143,63 @@ pre mark::before { content: attr(data-k); font: 600 10px var(--mono); color: var
 <script>
 "use strict";
 const D = JSON.parse(document.getElementById("data").textContent);
-const LAYER_NAMES = { system: "system", user: "user", assistant: "assistant", tool_call: "tool call", tool_result: "tool result", tool_schema: "tool schema" };
-const SHORT = { system: "sys", user: "user", assistant: "asst", tool_call: "call", tool_result: "result", tool_schema: "schema" };
+const LANG = document.documentElement.dataset.lang === "zh" ? "zh" : "en";
+const T = {
+  en: {
+    layers: { system: "system", user: "user", assistant: "assistant", tool_call: "tool call", tool_result: "tool result", tool_schema: "tool schema" },
+    short: { system: "sys", user: "user", assistant: "asst", tool_call: "call", tool_result: "result", tool_schema: "schema" },
+    absent: "rule absent", sub: (r, n) => `${r} runs · ${n} model requests`,
+    filter: "Filter runs", overviewNav: "Overview: all runs",
+    ovKicker: "Overview", ovTitle: "Did each rule reach the model?",
+    ovCap: "One row per run. A filled cell is the layer where the rule first arrived; a ring means it never arrived in any agent request. Click a row to replay it.",
+    requests: "requests", flags: "flags", never: "never arrived",
+    meta: (m, a, s) => `${m} · ${a} agent request${a === 1 ? "" : "s"}${s ? `, ${s} side request${s === 1 ? "" : "s"}` : ""}`,
+    trackTitle: "Rule tracking", trackCap: "Rows are rule files, columns are requests in order. Faded columns are side requests (e.g. title generation).",
+    side: "side", req: i => `request ${i}`, absentShort: "absent",
+    compTitle: "What the model was sent", compCap: "Each bar is one request, to scale (characters), grouped by layer. Thin vertical ticks mark where rule text sits; hover one to name it.",
+    chars: n => `${n} chars`, share: p => `${p}% of request`,
+    segTitle: i => `Request ${i}, piece by piece`, segCap: (f, a) => `${f} · ${a}. "new" = not in the previous agent request. Click a row to read the text; rule lines are highlighted.`,
+    isNew: "new", empty: "No runs with model requests were found.",
+    kinds: { never: "never", late: "late", dropped: "dropped", returned: "returned", partial: "partial", duplicated: "duplicated" },
+    note: {
+      never: n => `${n.rule} never reached the model in ${n.n} request${n.n === 1 ? "" : "s"}`,
+      late: n => `${n.rule} first appears at request ${n.n}`,
+      dropped: n => `${n.rule} present at request ${n.prev}, gone at request ${n.n}`,
+      returned: n => `${n.rule} back at request ${n.n}`,
+      partial: n => `${n.rule} only partly present at request ${n.n} (${n.found}/${n.total} lines)`,
+      duplicated: n => `${n.rule} appears in ${n.count} places at request ${n.n}`,
+    },
+    theme: "Toggle light / dark", langLabel: "中文",
+  },
+  zh: {
+    layers: { system: "系统", user: "用户", assistant: "助手", tool_call: "工具调用", tool_result: "工具结果", tool_schema: "工具定义" },
+    short: { system: "系统", user: "用户", assistant: "助手", tool_call: "调用", tool_result: "结果", tool_schema: "定义" },
+    absent: "规则不在", sub: (r, n) => `${r} 个运行 · ${n} 次模型请求`,
+    filter: "筛选运行", overviewNav: "总览：全部运行",
+    ovKicker: "总览", ovTitle: "每条规则送到模型了吗？",
+    ovCap: "一行一个运行。格子的颜色是规则第一次出现的那一层；空心框表示它从来没送到。点一行进入回放。",
+    requests: "请求", flags: "标记", never: "从未送达",
+    meta: (m, a, s) => `${m} · ${a} 次 Agent 请求${s ? `，${s} 次旁支请求` : ""}`,
+    trackTitle: "规则追踪", trackCap: "每行一个规则文件，每列一次请求。淡色的列是旁支请求（例如生成会话标题）。",
+    side: "旁支", req: i => `请求 ${i}`, absentShort: "不在",
+    compTitle: "模型收到了什么", compCap: "每条长条是一次请求，按字数等比例画出，按层分色。细竖线是规则文字的位置，悬停可看名字。",
+    chars: n => `${n} 字符`, share: p => `占这次请求 ${p}%`,
+    segTitle: i => `请求 ${i}，逐段查看`, segCap: (f, a) => `${f} · ${a}。「新增」表示上一次 Agent 请求里没有。点一行展开原文，规则行会高亮。`,
+    isNew: "新增", empty: "没有找到包含模型请求的运行。",
+    kinds: { never: "未送达", late: "晚到", dropped: "消失", returned: "回来", partial: "部分", duplicated: "重复" },
+    note: {
+      never: n => `${n.rule} 在 ${n.n} 次请求里都没有送到模型`,
+      late: n => `${n.rule} 到第 ${n.n} 次请求才出现`,
+      dropped: n => `${n.rule} 第 ${n.prev} 次请求还在，第 ${n.n} 次没了`,
+      returned: n => `${n.rule} 在第 ${n.n} 次请求回来了`,
+      partial: n => `${n.rule} 在第 ${n.n} 次请求只送了一部分（${n.found}/${n.total} 行）`,
+      duplicated: n => `${n.rule} 在第 ${n.n} 次请求出现了 ${n.count} 处`,
+    },
+    theme: "切换浅色 / 深色", langLabel: "EN",
+  },
+}[LANG];
+const LAYER_NAMES = T.layers;
+const SHORT = T.short;
 const color = l => `var(--l${D.layers.indexOf(l)})`;
 const ruleSort = (a, b) => a.localeCompare(b);
 const el = (tag, attrs = {}, ...kids) => {
@@ -168,10 +231,10 @@ const hover = (node, fn) => {
 };
 
 // header
-document.getElementById("sub").textContent = `${D.runs.length} runs · ${D.runs.reduce((a, r) => a + r.steps.length, 0)} model requests`;
+document.getElementById("sub").textContent = T.sub(D.runs.length, D.runs.reduce((a, r) => a + r.steps.length, 0));
 const legend = document.getElementById("legend");
 for (const l of D.layers) legend.append(el("span", {}, el("i", { class: "sw", style: `background:${color(l)}` }), LAYER_NAMES[l]));
-legend.append(el("span", {}, el("i", { class: "sw ring" }), "rule absent"));
+legend.append(el("span", {}, el("i", { class: "sw ring" }), T.absent));
 
 // rule status over a run: first layer it reached, worst status
 function summarize(run, key) {
@@ -191,8 +254,8 @@ const nav = document.getElementById("nav");
 let current = null;
 function renderNav(filter = "") {
   const q = filter.toLowerCase();
-  const input = el("input", { type: "search", placeholder: "Filter runs", value: filter, oninput: e => renderNav(e.target.value), "data-testid": "filter" });
-  const kids = [input, el("button", { "aria-current": String(current === null), onclick: () => select(null), "data-testid": "nav-overview" }, el("span", { class: "lbl" }, "Overview: all runs"))];
+  const input = el("input", { type: "search", placeholder: T.filter, value: filter, oninput: e => renderNav(e.target.value), "data-testid": "filter" });
+  const kids = [input, el("button", { "aria-current": String(current === null), onclick: () => select(null), "data-testid": "nav-overview" }, el("span", { class: "lbl" }, T.overviewNav))];
   let lastHarness = null;
   for (const [i, run] of D.runs.entries()) {
     if (q && !(run.label + " " + run.harness).toLowerCase().includes(q)) continue;
@@ -212,10 +275,10 @@ function renderNav(filter = "") {
 function renderOverview(main) {
   const keys = [...new Set(D.runs.flatMap(r => r.rules.map(x => x.key)))].sort(ruleSort);
   main.append(
-    el("p", { class: "kicker" }, "Overview"),
-    el("h2", {}, "Did each rule reach the model?"),
-    el("p", { class: "cap" }, "One row per run. A filled cell is the layer where the rule first arrived; a ring means it never arrived in any agent request. Click a row to replay it."));
-  const head = el("tr", {}, el("th"), ...keys.map(k => el("th", {}, k)), el("th", {}, "requests"), el("th", {}, "flags"));
+    el("p", { class: "kicker" }, T.ovKicker),
+    el("h2", {}, T.ovTitle),
+    el("p", { class: "cap" }, T.ovCap));
+  const head = el("tr", {}, el("th"), ...keys.map(k => el("th", {}, k)), el("th", {}, T.requests), el("th", {}, T.flags));
   const body = el("tbody");
   for (const [i, run] of D.runs.entries()) {
     const tr = el("tr", { onclick: () => select(i), "data-testid": `ov-${run.label}` }, el("th", {}, run.label));
@@ -223,7 +286,7 @@ function renderOverview(main) {
       if (!run.rules.some(r => r.key === k)) { tr.append(el("td")); continue; }
       const s = summarize(run, k);
       const td = el("td", { class: `cell ${s.status}`, style: s.status === "absent" ? "" : `background-color:${color(s.layer)}` }, s.status === "absent" ? "—" : SHORT[s.layer]);
-      hover(td, () => [s.status === "absent" ? "never arrived" : `${s.status} · ${LAYER_NAMES[s.layer]}`, `${k} · ${run.label}`, run.rules.find(r => r.key === k).origin]);
+      hover(td, () => [s.status === "absent" ? T.never : `${T.kinds[s.status] || s.status} · ${LAYER_NAMES[s.layer]}`, `${k} · ${run.label}`, run.rules.find(r => r.key === k).origin]);
       tr.append(td);
     }
     const crit = run.notes.filter(n => severity(n) === "critical").length;
@@ -241,19 +304,18 @@ function renderRun(main, run) {
   main.append(
     el("p", { class: "kicker" }, run.harness),
     el("h2", {}, run.label),
-    el("p", { class: "meta" }, `${model} · ${agent.length} agent request(s)${run.steps.length > agent.length ? `, ${run.steps.length - agent.length} side request(s)` : ""} · ${run.id}`));
+    el("p", { class: "meta" }, `${T.meta(model, agent.length, run.steps.length - agent.length)} · ${run.id}`));
 
   if (run.notes.length) {
     const box = el("div", { class: "notes", "data-testid": "notes" });
-    for (const n of run.notes) box.append(el("div", { class: "note" }, el("b", { class: severity(n) }, n.kind), n.text));
+    for (const n of run.notes) box.append(el("div", { class: "note" }, el("b", { class: severity(n) }, T.kinds[n.kind]), T.note[n.kind](n)));
     main.append(box);
   }
 
   // rule tracking
   const keys = run.rules.map(r => r.key).sort(ruleSort);
-  main.append(el("h3", {}, "Rule tracking"),
-    el("p", { class: "cap" }, "Rows are rule files, columns are requests in order. Faded columns are side requests (e.g. title generation)."));
-  const head = el("tr", {}, el("th"), ...run.steps.map((s, i) => el("th", { class: i === selStep ? "sel" : "", onclick: () => pick(i) }, s.side ? `${i + 1}·side` : i + 1)));
+  main.append(el("h3", {}, T.trackTitle), el("p", { class: "cap" }, T.trackCap));
+  const head = el("tr", {}, el("th"), ...run.steps.map((s, i) => el("th", { class: i === selStep ? "sel" : "", onclick: () => pick(i) }, s.side ? `${i + 1}·${T.side}` : i + 1)));
   const body = el("tbody");
   for (const k of keys) {
     const rule = run.rules.find(r => r.key === k);
@@ -263,7 +325,7 @@ function renderRun(main, run) {
       const cls = `cell ${status}${st.side ? " side" : ""}${i === selStep ? " sel" : ""}`;
       const td = el("td", { class: cls, "data-testid": `cell-${k}-${i + 1}`, style: status === "absent" ? "" : `background-color:${color(layers[0])}`, onclick: () => pick(i) },
         status === "absent" ? "—" : SHORT[layers[0]] + (count > 1 ? ` ×${count}` : ""));
-      hover(td, () => [status === "absent" ? "absent" : `${status} · ${layers.map(l => LAYER_NAMES[l]).join(", ")}`, `${k} · request ${i + 1}`, rule.origin]);
+      hover(td, () => [status === "absent" ? T.absentShort : `${T.kinds[status] || status} · ${layers.map(l => LAYER_NAMES[l]).join(", ")}`, `${k} · ${T.req(i + 1)}`, rule.origin]);
       tr.append(td);
     });
     body.append(tr);
@@ -271,8 +333,7 @@ function renderRun(main, run) {
   main.append(el("table", { class: "matrix", "data-testid": "tracking" }, el("thead", {}, head), body));
 
   // composition
-  main.append(el("h3", {}, "What the model was sent"),
-    el("p", { class: "cap" }, "Each bar is one request, to scale (characters), grouped by layer. Black ticks mark where rule text sits; hover one to name it."));
+  main.append(el("h3", {}, T.compTitle), el("p", { class: "cap" }, T.compCap));
   const totals = run.steps.map(st => st.segs.reduce((a, s) => a + D.strings[s[3]].length, 0));
   const max = Math.max(1, ...totals);
   const comp = el("div", { class: "comp", "data-testid": "composition" });
@@ -283,7 +344,7 @@ function renderRun(main, run) {
     byLayer.forEach((n, li) => {
       if (!n) return;
       const part = el("div", { style: `flex:${n};background:${color(D.layers[li])}` });
-      hover(part, () => [fmt(n) + " chars", `${LAYER_NAMES[D.layers[li]]} · request ${i + 1}`, `${Math.round((n / totals[i]) * 100)}% of request`]);
+      hover(part, () => [T.chars(fmt(n)), `${LAYER_NAMES[D.layers[li]]} · ${T.req(i + 1)}`, T.share(Math.round((n / totals[i]) * 100))]);
       bar.append(part);
     });
     // rule ticks at their offset in the request, laid out in layer order like the bar
@@ -297,13 +358,13 @@ function renderRun(main, run) {
         if (seen.has(k)) continue;
         seen.add(k);
         const tick = el("i", { class: "tick", style: `left:calc(${((base + a) / totals[i]) * 100}% - 1px)` });
-        hover(tick, () => [k, `${LAYER_NAMES[D.layers[s[0]]]} · ${s[1]}`, `request ${i + 1}`]);
+        hover(tick, () => [k, `${LAYER_NAMES[D.layers[s[0]]]} · ${s[1]}`, T.req(i + 1)]);
         bar.append(tick);
       }
       within[s[0]] += D.strings[s[3]].length;
     }
     comp.append(
-      el("div", { class: `k${i === selStep ? " sel" : ""}`, onclick: () => pick(i), "data-testid": `req-${i + 1}` }, `request ${i + 1}${st.side ? " · side" : ""}`),
+      el("div", { class: `k${i === selStep ? " sel" : ""}`, onclick: () => pick(i), "data-testid": `req-${i + 1}` }, `${T.req(i + 1)}${st.side ? ` · ${T.side}` : ""}`),
       el("div", { class: `row${st.side ? " side" : ""}` }, bar),
       el("div", { class: "v" }, fmt(totals[i])));
   });
@@ -311,8 +372,7 @@ function renderRun(main, run) {
 
   // step detail
   const st = run.steps[selStep];
-  main.append(el("h3", {}, `Request ${selStep + 1}, piece by piece`),
-    el("p", { class: "cap" }, `${st.source} · ${st.api}. "new" = not in the previous agent request. Click a row to read the text; rule lines are highlighted.`));
+  main.append(el("h3", {}, T.segTitle(selStep + 1)), el("p", { class: "cap" }, T.segCap(st.source, st.api)));
   const segs = el("div", { class: "segs", "data-testid": "segments" });
   for (const s of st.segs) {
     const layer = D.layers[s[0]];
@@ -324,7 +384,7 @@ function renderRun(main, run) {
         el("span", {}, LAYER_NAMES[layer]),
         el("span", { class: "w", title: s[1] }, s[1] + (s[2] && s[2] !== layer ? ` · ${s[2]}` : "")),
         el("span", { class: "n" }, fmt(text.length)),
-        el("span", {}, s[4] ? el("span", { class: "chip new" }, "new") : null, ...rules.map(k => el("span", { class: "chip rule" }, k)))));
+        el("span", {}, s[4] ? el("span", { class: "chip new" }, T.isNew) : null, ...rules.map(k => el("span", { class: "chip rule" }, k)))));
     det.addEventListener("toggle", () => {
       if (!det.open || det.querySelector("pre")) return;
       const pre = el("pre");
@@ -345,7 +405,7 @@ function renderRun(main, run) {
 const mainEl = document.getElementById("main");
 function render() {
   mainEl.replaceChildren();
-  if (!D.runs.length) { mainEl.append(el("p", { class: "empty" }, "No runs with model requests were found.")); return; }
+  if (!D.runs.length) { mainEl.append(el("p", { class: "empty" }, T.empty)); return; }
   if (current === null) renderOverview(mainEl); else renderRun(mainEl, D.runs[current]);
 }
 // #run=<label>&step=<n> links straight to a run and request
@@ -360,7 +420,17 @@ if (q.get("run")) {
   const i = D.runs.findIndex(r => r.label === q.get("run"));
   if (i >= 0) { current = i; selStep = Math.max(0, Math.min(D.runs[i].steps.length - 1, (+q.get("step") || 1) - 1)); }
 }
-document.getElementById("theme").addEventListener("click", () => {
+const themeBtn = document.getElementById("theme");
+themeBtn.setAttribute("aria-label", T.theme); themeBtn.title = T.theme;
+const langBtn = document.getElementById("langsw");
+langBtn.textContent = T.langLabel;
+langBtn.addEventListener("click", () => {
+  const u = new URL(location.href);
+  u.searchParams.set("lang", LANG === "zh" ? "en" : "zh");
+  try { localStorage.setItem("ks-lang", LANG === "zh" ? "en" : "zh"); } catch (e) {}
+  location.replace(u);
+});
+themeBtn.addEventListener("click", () => {
   const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
   document.documentElement.dataset.theme = t;
   try { localStorage.setItem("ks-theme", t); } catch (e) {}
