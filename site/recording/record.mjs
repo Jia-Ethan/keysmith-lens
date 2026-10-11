@@ -223,8 +223,15 @@ class Recorder {
       const delta = target - done;
       done = target;
       await this.page.evaluate((sel, delta) => {
-        const el = sel ? document.querySelector(sel) : document.scrollingElement;
-        (el ?? document.scrollingElement).scrollBy(0, delta);
+        if (sel) return document.querySelector(sel)?.scrollBy(0, delta);
+        // Page scroll is drawn as a transform on <main>: a real document scroll
+        // needs a compositor frame that never comes under paused virtual time
+        // on Linux, and the screenshot hangs. The header and run list stay put,
+        // as they do when the page scrolls.
+        const main = document.querySelector("main");
+        const y = (Number(main.dataset.recScroll) || 0) + delta;
+        main.dataset.recScroll = String(y);
+        main.style.transform = `translateY(${-y}px)`;
       }, selector, delta);
       await this.step(FRAME);
       await this.shot();
@@ -308,23 +315,34 @@ async function main() {
       protocolTimeout: 120000,
       args: ["--no-first-run", "--hide-scrollbars", "--force-color-profile=srgb", "--font-render-hinting=none", "--disable-lcd-text"],
     });
-  // A fresh browser per clip, and one retry: a renderer that stalls on a
-  // screenshot (seen on CI runners) costs one clip, not the whole run.
+  // A fresh browser per clip and one retry. A clip that still fails is
+  // dropped (its frames removed) so encode.mjs keeps the committed one, and
+  // the rest of the clips are still recorded.
+  const failed = [];
   for (const scene of scenes)
     for (const lang of langs)
       for (const theme of themes)
         for (let attempt = 1; ; attempt++) {
+          const name = `${scene.id}-${lang}-${theme}`;
           const browser = await launch();
           try {
             await recordScene(browser, scene, lang, theme, outRoot);
             break;
           } catch (e) {
-            if (attempt >= 2) throw e;
-            console.log(`${scene.id}-${lang}-${theme}: ${e.message.split("\n")[0]}; retrying`);
+            console.log(`${name}: ${e.message.split("\n")[0]}${attempt < 2 ? "; retrying" : "; keeping the committed clip"}`);
+            if (attempt >= 2) {
+              fs.rmSync(path.join(outRoot, name), { recursive: true, force: true });
+              failed.push(name);
+              break;
+            }
           } finally {
             await browser.close().catch(() => {});
           }
         }
+  if (failed.length) {
+    console.log(`not re-recorded: ${failed.join(", ")}`);
+    process.exitCode = 1;
+  }
 }
 
 main().catch((e) => {
