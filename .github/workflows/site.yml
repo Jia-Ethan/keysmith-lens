@@ -45,7 +45,10 @@ jobs:
       - run: npm ci
       - name: Fonts for recording
         run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk ffmpeg >/dev/null
+      # Falls back to the committed clips in site/public/media if recording fails.
       - name: Re-record the film and tour from the current viewer
+        continue-on-error: true
+        timeout-minutes: 40
         env:
           CHROME: /usr/bin/google-chrome
         run: npm run viewer && npm run record

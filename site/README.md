@@ -27,7 +27,7 @@ node scripts/check-dist.mjs   # 检查链接、资源与中英文页面配对
 
 所以 Lens 的界面改了，网站上的视频会跟着变，不需要手动重录。发布新版本（GitHub Release）时也会重建，更新日志从 Release 读取。每天还会自动重建一次。
 
-视频不提交进仓库（`public/media/` 由 CI 生成）。
+`public/media/` 里提交了一份本机录好的视频。CI 每次都会重录并覆盖它；万一 CI 上录制失败（例如浏览器卡住），就沿用提交的这一份，部署不会中断。界面改动较大时，在本机跑一次 `npm run viewer && npm run record` 再提交，让这份备用视频也跟上。
 
 ## 内容从哪里来
 

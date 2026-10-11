@@ -301,17 +301,30 @@ async function main() {
   const langs = arg("lang") ? [arg("lang")] : ["zh", "en"];
   const themes = arg("theme") ? [arg("theme")] : ["light", "dark"];
   const scenes = SCENES.filter((s) => all || !only || s.id === only);
-  const browser = await puppeteer.launch({
-    executablePath: CHROME,
-    headless: "new",
-    protocolTimeout: 120000,
-    args: ["--no-first-run", "--hide-scrollbars", "--force-color-profile=srgb", "--font-render-hinting=none", "--disable-lcd-text"],
-  });
-  try {
-    for (const scene of scenes) for (const lang of langs) for (const theme of themes) await recordScene(browser, scene, lang, theme, outRoot);
-  } finally {
-    await browser.close();
-  }
+  const launch = () =>
+    puppeteer.launch({
+      executablePath: CHROME,
+      headless: "new",
+      protocolTimeout: 120000,
+      args: ["--no-first-run", "--hide-scrollbars", "--force-color-profile=srgb", "--font-render-hinting=none", "--disable-lcd-text"],
+    });
+  // A fresh browser per clip, and one retry: a renderer that stalls on a
+  // screenshot (seen on CI runners) costs one clip, not the whole run.
+  for (const scene of scenes)
+    for (const lang of langs)
+      for (const theme of themes)
+        for (let attempt = 1; ; attempt++) {
+          const browser = await launch();
+          try {
+            await recordScene(browser, scene, lang, theme, outRoot);
+            break;
+          } catch (e) {
+            if (attempt >= 2) throw e;
+            console.log(`${scene.id}-${lang}-${theme}: ${e.message.split("\n")[0]}; retrying`);
+          } finally {
+            await browser.close().catch(() => {});
+          }
+        }
 }
 
 main().catch((e) => {
